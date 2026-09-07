@@ -3093,6 +3093,15 @@ export const WorkspaceApp = ({
       : isStandaloneRuntime
         ? t("workspace.pullToRefresh.pullNotes")
         : t("workspace.pullToRefresh.pullPage");
+  const editorCompanionDiscoveryHub = authRequired && Boolean(user) && !demoMode ? (
+    <Suspense fallback={null}>
+      <CompanionDiscoveryHub key={localDataScope} scope={localDataScope} onOpenNote={handleOpenPluginNote} onOpenSettings={handleOpenSettings}
+        onNotesChanged={async () => {
+          const result = await refreshWorkspaceFromServer("manual");
+          if ("skipped" in result && result.skipped) throw new Error("Workspace refresh was skipped.");
+        }} />
+    </Suspense>
+  ) : null;
 
   return (
     <WorkspaceMotionProvider>
@@ -3420,31 +3429,16 @@ export const WorkspaceApp = ({
                       {selectedMemo && selectedDiagram ? (
                         <DiagramEditorPane
                           memo={selectedMemo}
+                          notebooks={notebooks}
                           repository={repository}
                           readOnly={memoView === "trash" || selectedMemo.isDeleted}
                           desktopFocusMode={desktopFocusModeActive}
-                          hasNextMemo={Boolean(nextMemoId)}
-                          hasPreviousMemo={Boolean(previousMemoId)}
                           onBackToList={() => {
                             clearPendingCreatedMemo();
                             setActivePane("memos");
                           }}
                           onDeleted={async (memoId) => {
                             deleteMemoMutation.mutate({ memoId, permanent: false });
-                          }}
-                          onOpenNextMemo={() => {
-                            if (nextMemoId) {
-                              clearPendingCreatedMemo();
-                              setCreatedMemoEditId(null);
-                              setSelectedMemoId(nextMemoId);
-                            }
-                          }}
-                          onOpenPreviousMemo={() => {
-                            if (previousMemoId) {
-                              clearPendingCreatedMemo();
-                              setCreatedMemoEditId(null);
-                              setSelectedMemoId(previousMemoId);
-                            }
                           }}
                           onPermanentDeleted={async (memoId) => {
                             setMemoDeleteConfirmation({ kind: "single", memoIds: [memoId], permanent: true });
@@ -3463,19 +3457,13 @@ export const WorkspaceApp = ({
                           }}
                           onSaveAsTemplate={handleSaveAsTemplate}
                           onToggleDesktopFocusMode={toggleDesktopFocusMode}
+                          onOpenExecutionCenter={handleOpenExecutionCenter}
+                          companionDiscoveryHub={editorCompanionDiscoveryHub}
                         />
                       ) : (
                       <EditorPane
                       onOpenExecutionCenter={handleOpenExecutionCenter}
-                      companionDiscoveryHub={authRequired && Boolean(user) && !demoMode ? (
-                        <Suspense fallback={null}>
-                          <CompanionDiscoveryHub key={localDataScope} scope={localDataScope} onOpenNote={handleOpenPluginNote} onOpenSettings={handleOpenSettings}
-                            onNotesChanged={async () => {
-                              const result = await refreshWorkspaceFromServer("manual");
-                              if ("skipped" in result && result.skipped) throw new Error("Workspace refresh was skipped.");
-                            }} />
-                        </Suspense>
-                      ) : null}
+                      companionDiscoveryHub={editorCompanionDiscoveryHub}
                       memo={selectedMemo}
                       repository={repository}
                       pluginHost={pluginHost}
@@ -3510,26 +3498,10 @@ export const WorkspaceApp = ({
                     }}
                     imageCompressionEnabled={imageCompressionEnabled}
                     selectionActionBar={memoSelectionActionBar}
-                    hasNextMemo={Boolean(nextMemoId)}
-                    hasPreviousMemo={Boolean(previousMemoId)}
                     onBackToList={() => {
                       applyMobileEditorReturnPreview(selectedMemo?.id ?? selectedMemoId);
                       clearPendingCreatedMemo();
                       setActivePane("memos");
-                    }}
-                    onOpenNextMemo={() => {
-                      if (nextMemoId) {
-                        clearPendingCreatedMemo();
-                        setCreatedMemoEditId(null);
-                        setSelectedMemoId(nextMemoId);
-                      }
-                    }}
-                    onOpenPreviousMemo={() => {
-                      if (previousMemoId) {
-                        clearPendingCreatedMemo();
-                        setCreatedMemoEditId(null);
-                        setSelectedMemoId(previousMemoId);
-                      }
                     }}
                     onSaved={async (memo) => {
                       await putLocalMemo(localDataScope, memo);
